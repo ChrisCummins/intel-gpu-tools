@@ -1,0 +1,8 @@
+#!/bin/bash
+
+glueball=192.168.4.152
+
+rsync -avh ~/src/intel-gpu-tools/tests/*.[ch] $glueball:~/src/intel-gpu-tools/tests/
+rsync -avh ~/src/intel-gpu-tools/lib/*.[ch] $glueball:~/src/intel-gpu-tools/lib/
+
+ssh $glueball 'cd ~/src/intel-gpu-tools && make && exec ./tests/testdisplay -m'
