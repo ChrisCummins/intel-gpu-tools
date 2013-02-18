@@ -79,3 +79,4 @@ core
 *.swo
 *.swp
 cscope.*
+*.png
