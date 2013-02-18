@@ -1,33 +1,6 @@
-if HAVE_DUMPER
-SUBDIRS = quick_dump
-endif
+bin_PROGRAMS = $(NULL)
 
-bin_PROGRAMS = 				\
-	intel_disable_clock_gating 	\
-	intel_audio_dump 		\
-	intel_backlight 		\
-	intel_bios_dumper 		\
-	intel_bios_reader 		\
-	intel_error_decode 		\
-	intel_gpu_top 			\
-	intel_gpu_time 			\
-	intel_gtt 			\
-	intel_stepping 			\
-	intel_reg_checker 		\
-	intel_reg_dumper 		\
-	intel_reg_snapshot 		\
-	intel_reg_write 		\
-	intel_reg_read 			\
-	intel_forcewaked		\
-	intel_dpio_read			\
-	intel_dpio_write		\
-	intel_l3_parity
-
-noinst_PROGRAMS = 			\
-	intel_dump_decode 		\
-	intel_infoframes		\
-	intel_lid			\
-	intel_panel_fitter
+noinst_PROGRAMS = $(NULL)
 
 dist_bin_SCRIPTS = intel_gpu_abrt
 

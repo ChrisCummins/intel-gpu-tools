@@ -1,6 +1,4 @@
-bin_PROGRAMS = 				\
-	intel_sprite_on			\
-	$(NULL)
+bin_PROGRAMS = $(NULL)
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/lib
 AM_CFLAGS = $(DRM_CFLAGS) $(PCIACCESS_CFLAGS) $(CWARNFLAGS) $(CAIRO_CFLAGS)
