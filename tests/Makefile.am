@@ -101,6 +101,8 @@ TESTS_progs = \
 	$(NOUVEAU_TESTS) \
 	prime_self_import \
 	prime_udl \
+	cec_test \
+	cec_test2 \
 	$(NULL)
 
 # IMPORTANT: The ZZ_ tests need to be run last!
