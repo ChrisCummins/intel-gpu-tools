@@ -65,6 +65,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#define DISPLAY_TIME 5
+
 drmModeRes *resources;
 int drm_fd, modes;
 int dump_info = 0, test_all_modes =0, test_preferred_mode = 0, force_mode = 0,
@@ -108,8 +110,6 @@ struct type_name encoder_type_names[] = {
 	{ DRM_MODE_ENCODER_LVDS, "LVDS" },
 	{ DRM_MODE_ENCODER_TVDAC, "TVDAC" },
 };
-
-type_name_fn(encoder_type)
 
 struct type_name connector_status_names[] = {
 	{ DRM_MODE_CONNECTED, "connected" },
@@ -155,6 +155,12 @@ struct connector {
 	int crtc;
 	int pipe;
 };
+
+static void end_test(void)
+{
+  printf("Ending test.\n");
+  exit (0);
+}
 
 static void dump_connectors_fd(int drmfd)
 {
@@ -384,7 +390,7 @@ paint_output_info(cairo_t *cr, int l_width, int l_height, void *priv)
 	struct connector *c = priv;
 	cairo_text_extents_t name_extents, mode_extents;
 	char name_buf[128], mode_buf[128];
-	int i, x, y, modes_x, modes_y;
+	int x, y;
 
 	/* Get text extents for each string */
 	snprintf(name_buf, sizeof name_buf, "%s",
@@ -395,74 +401,18 @@ paint_output_info(cairo_t *cr, int l_width, int l_height, void *priv)
 			       CAIRO_FONT_WEIGHT_NORMAL);
 	cairo_text_extents(cr, name_buf, &name_extents);
 
-	snprintf(mode_buf, sizeof mode_buf, "%s @ %dHz on %s encoder",
-		 c->mode.name, c->mode.vrefresh,
-		 encoder_type_str(c->encoder->encoder_type));
+	/* Random act of vandalism. */
+	snprintf(mode_buf, sizeof mode_buf, "CHRIS W0Z 'ERE !!!!11!");
 	cairo_set_font_size(cr, 36);
 	cairo_text_extents(cr, mode_buf, &mode_extents);
-
-	/* Paint output name */
-	x = l_width / 2;
-	x -= name_extents.width / 2;
-	y = l_height / 2;
-	y -= (name_extents.height / 2) - (mode_extents.height / 2) - 10;
-	cairo_set_font_size(cr, 48);
-	cairo_move_to(cr, x, y);
-	cairo_text_path(cr, name_buf);
-	cairo_set_source_rgb(cr, 0, 0, 0);
-	cairo_stroke_preserve(cr);
-	cairo_set_source_rgb(cr, 1, 1, 1);
-	cairo_fill(cr);
-
-	/* Paint mode name */
-	x = l_width / 2;
-	x -= mode_extents.width / 2;
-	modes_x = x;
-	y = l_height / 2;
-	y += (mode_extents.height / 2) + (name_extents.height / 2) + 10;
-	cairo_set_font_size(cr, 36);
+	x = mode_extents.width;
+	y = mode_extents.height + 600;
 	cairo_move_to(cr, x, y);
 	cairo_text_path(cr, mode_buf);
 	cairo_set_source_rgb(cr, 0, 0, 0);
 	cairo_stroke_preserve(cr);
-	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_set_source_rgb(cr, 1, 0, 0);
 	cairo_fill(cr);
-
-	/* List available modes */
-	snprintf(mode_buf, sizeof mode_buf, "Available modes:");
-	cairo_set_font_size(cr, 18);
-	cairo_text_extents(cr, mode_buf, &mode_extents);
-	x = modes_x;
-	modes_x = x + mode_extents.width;
-	y += mode_extents.height + 10;
-	modes_y = y;
-	cairo_move_to(cr, x, y);
-	cairo_text_path(cr, mode_buf);
-	cairo_set_source_rgb(cr, 0, 0, 0);
-	cairo_stroke_preserve(cr);
-	cairo_set_source_rgb(cr, 1, 1, 1);
-	cairo_fill(cr);
-
-	for (i = 0; i < c->connector->count_modes; i++) {
-		snprintf(mode_buf, sizeof mode_buf, "%s @ %dHz",
-			 c->connector->modes[i].name,
-			 c->connector->modes[i].vrefresh);
-		cairo_set_font_size(cr, 18);
-		cairo_text_extents(cr, mode_buf, &mode_extents);
-		x = modes_x - mode_extents.width; /* right justify modes */
-		y += mode_extents.height + 10;
-		if (y + mode_extents.height >= height) {
-			y = modes_y + mode_extents.height + 10;
-			modes_x += mode_extents.width + 10;
-			x = modes_x - mode_extents.width;
-		}
-		cairo_move_to(cr, x, y);
-		cairo_text_path(cr, mode_buf);
-		cairo_set_source_rgb(cr, 0, 0, 0);
-		cairo_stroke_preserve(cr);
-		cairo_set_source_rgb(cr, 1, 1, 1);
-		cairo_fill(cr);
-	}
 
 	if (qr_code)
 		paint_image(cr, "./pass.png");
@@ -768,7 +718,10 @@ int main(int argc, char **argv)
 	if (dump_info || test_all_modes)
 		goto out_stdio;
 
-	g_main_loop_run(mainloop);
+	/* Do not run tests infinitely. */
+        g_timeout_add_seconds (DISPLAY_TIME, (GSourceFunc)end_test, NULL);
+
+        g_main_loop_run(mainloop);
 
 out_stdio:
 	g_io_channel_shutdown(stdinchannel, TRUE, NULL);
