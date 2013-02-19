@@ -65,7 +65,7 @@ static void testbuffer_to_png(const char *filename)
 	cairo_status_t ret;
 
 	surface = cairo_image_surface_create_for_data((void *)testbuffer,
-						      CAIRO_FORMAT_RGB24,
+						      CAIRO_FORMAT_ARGB32,
 						      WIDTH, HEIGHT, STRIDE);
 	ret = cairo_surface_write_to_png(surface, filename);
 	if (ret != CAIRO_STATUS_SUCCESS) {
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 		/* Write a single colour to the testbuffer. We're using RGB24
 		 * format, so the 32 bit pixel values are: 0xRRGGBB (upper eight
 		 * bits are unused). */
-		testcolour = 0xFF0000 - (i * 0x110000);
+		testcolour = 0xFFFF0000 - (i * 0x04110000);
 
 		for (j = 0; j < WIDTH*HEIGHT; j++)
 			testbuffer[j] = testcolour;

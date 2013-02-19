@@ -93,7 +93,7 @@ static void testbuffer_to_png(const char *filename)
 	cairo_status_t ret;
 
 	surface = cairo_image_surface_create_for_data((void *)testbuffer,
-						      CAIRO_FORMAT_RGB24,
+						      CAIRO_FORMAT_ARGB32,
 						      WIDTH, HEIGHT, STRIDE);
 	ret = cairo_surface_write_to_png(surface, filename);
 	if (ret != CAIRO_STATUS_SUCCESS) {
