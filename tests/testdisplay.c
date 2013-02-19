@@ -65,11 +65,12 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define DISPLAY_TIME 5
+/* Time before quitting */
+#define DISPLAY_TIME 3000
 
 drmModeRes *resources;
 int drm_fd, modes;
-int dump_info = 0, test_all_modes =0, test_preferred_mode = 0, force_mode = 0,
+int test_all_modes =0, test_preferred_mode = 0, force_mode = 0,
 	test_plane, enable_tiling;
 int sleep_between_modes = 5;
 uint32_t depth = 24, stride, bpp;
@@ -85,6 +86,7 @@ unsigned int plane_id;
 int plane_width, plane_height;
 static const uint32_t SPRITE_COLOR_KEY = 0x00aaaaaa;
 uint32_t *fb_ptr;
+char *input_file = "/home/chris/src/intel-gpu-tools/big.png";
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -117,8 +119,6 @@ struct type_name connector_status_names[] = {
 	{ DRM_MODE_UNKNOWNCONNECTION, "unknown" },
 };
 
-type_name_fn(connector_status)
-
 struct type_name connector_type_names[] = {
 	{ DRM_MODE_CONNECTOR_Unknown, "unknown" },
 	{ DRM_MODE_CONNECTOR_VGA, "VGA" },
@@ -136,8 +136,6 @@ struct type_name connector_type_names[] = {
 	{ DRM_MODE_CONNECTOR_TV, "TV" },
 	{ DRM_MODE_CONNECTOR_eDP, "Embedded DisplayPort" },
 };
-
-type_name_fn(connector_type)
 
 /*
  * Mode setting with the kernel interfaces is a bit of a chore.
@@ -160,86 +158,6 @@ static void end_test(void)
 {
   printf("Ending test.\n");
   exit (0);
-}
-
-static void dump_connectors_fd(int drmfd)
-{
-	int i, j;
-
-	drmModeRes *mode_resources = drmModeGetResources(drmfd);
-
-	if (!mode_resources) {
-		fprintf(stderr, "drmModeGetResources failed: %s\n",
-			strerror(errno));
-		return;
-	}
-
-	printf("Connectors:\n");
-	printf("id\tencoder\tstatus\t\ttype\tsize (mm)\tmodes\n");
-	for (i = 0; i < mode_resources->count_connectors; i++) {
-		drmModeConnector *connector;
-
-		connector = drmModeGetConnector(drmfd, mode_resources->connectors[i]);
-		if (!connector) {
-			fprintf(stderr, "could not get connector %i: %s\n",
-				mode_resources->connectors[i], strerror(errno));
-			continue;
-		}
-
-		printf("%d\t%d\t%s\t%s\t%dx%d\t\t%d\n",
-		       connector->connector_id,
-		       connector->encoder_id,
-		       connector_status_str(connector->connection),
-		       connector_type_str(connector->connector_type),
-		       connector->mmWidth, connector->mmHeight,
-		       connector->count_modes);
-
-		if (!connector->count_modes)
-			continue;
-
-		printf("  modes:\n");
-		printf("  name refresh (Hz) hdisp hss hse htot vdisp "
-		       "vss vse vtot flags type clock\n");
-		for (j = 0; j < connector->count_modes; j++){
-			fprintf(stdout, "[%d]", j );
-			kmstest_dump_mode(&connector->modes[j]);
-		}
-
-		drmModeFreeConnector(connector);
-	}
-	printf("\n");
-
-	drmModeFreeResources(mode_resources);
-}
-
-static void dump_crtcs_fd(int drmfd)
-{
-	int i;
-	drmModeRes *mode_resources = drmModeGetResources(drmfd);
-
-	printf("CRTCs:\n");
-	printf("id\tfb\tpos\tsize\n");
-	for (i = 0; i < mode_resources->count_crtcs; i++) {
-		drmModeCrtc *crtc;
-
-		crtc = drmModeGetCrtc(drmfd, mode_resources->crtcs[i]);
-		if (!crtc) {
-			fprintf(stderr, "could not get crtc %i: %s\n",
-				mode_resources->crtcs[i], strerror(errno));
-			continue;
-		}
-		printf("%d\t%d\t(%d,%d)\t(%dx%d)\n",
-		       crtc->crtc_id,
-		       crtc->buffer_id,
-		       crtc->x, crtc->y,
-		       crtc->width, crtc->height);
-		kmstest_dump_mode(&crtc->mode);
-
-		drmModeFreeCrtc(crtc);
-	}
-	printf("\n");
-
-	drmModeFreeResources(mode_resources);
 }
 
 static void connector_find_preferred_mode(struct connector *c)
@@ -339,83 +257,41 @@ static void connector_find_preferred_mode(struct connector *c)
 	c->connector = connector;
 }
 
-static void
-paint_color_key(struct kmstest_fb *fb_info)
+static void paint_function(cairo_t *cr, int l_width, int l_height, void *priv)
 {
-	int i, j;
-
-	for (i = crtc_y; i < crtc_y + crtc_h; i++)
-		for (j = crtc_x; j < crtc_x + crtc_w; j++) {
-			uint32_t offset;
-
-			offset = (i * fb_info->stride / 4) + j;
-			fb_ptr[offset] = SPRITE_COLOR_KEY;
-		}
-}
-
-static void paint_image(cairo_t *cr, const char *file)
-{
-	int img_x, img_y, img_w, img_h, img_w_o, img_h_o;
-	double img_w_scale, img_h_scale;
-
+	int image_x, image_y, image_width, image_height, text_x, text_y;
+	char text_buffer[128];
 	cairo_surface_t *image;
+	cairo_text_extents_t text_extents;
 
-	img_y = height * (0.10 );
-	img_h = height * 0.08 * 4;
-	img_w = img_h;
+	/* Create image */
+	image = cairo_image_surface_create_from_png(input_file);
 
-	img_x = (width / 2) - (img_w / 2);
+	/* Center the image on screen */
+	image_width = cairo_image_surface_get_width(image);
+	image_height = cairo_image_surface_get_height(image);
+	image_x = (width - image_width) / 2;
+	image_y = (height - image_height) / 2;
+	cairo_translate(cr, image_x, image_y);
 
-	image = cairo_image_surface_create_from_png(file);
-
-	img_w_o = cairo_image_surface_get_width(image);
-	img_h_o = cairo_image_surface_get_height(image);
-
-	cairo_translate(cr, img_x, img_y);
-
-	img_w_scale = (double)img_w / (double)img_w_o;
-	img_h_scale = (double)img_h / (double)img_h_o;
-	cairo_scale(cr, img_w_scale, img_h_scale);
-
+	/* Paint the image */
 	cairo_set_source_surface(cr, image, 0, 0);
-	cairo_scale(cr, 1, 1);
-
 	cairo_paint(cr);
 	cairo_surface_destroy(image);
-}
 
-static void
-paint_output_info(cairo_t *cr, int l_width, int l_height, void *priv)
-{
-	struct connector *c = priv;
-	cairo_text_extents_t name_extents, mode_extents;
-	char name_buf[128], mode_buf[128];
-	int x, y;
-
-	/* Get text extents for each string */
-	snprintf(name_buf, sizeof name_buf, "%s",
-		 connector_type_str(c->connector->connector_type));
-	cairo_set_font_size(cr, 48);
-	cairo_select_font_face(cr, "Helvetica",
-			       CAIRO_FONT_SLANT_NORMAL,
+	snprintf(text_buffer, sizeof(text_buffer), "%dx%d (%dx%d)",
+		 image_width, image_height, width, height);
+	cairo_set_font_size(cr, 30);
+	cairo_select_font_face(cr, "Helvetica", CAIRO_FONT_SLANT_NORMAL,
 			       CAIRO_FONT_WEIGHT_NORMAL);
-	cairo_text_extents(cr, name_buf, &name_extents);
+	cairo_text_extents(cr, text_buffer, &text_extents);
+	text_x = width - image_x - text_extents.width - 10;
+	text_y = height - image_y - 10;
 
-	/* Random act of vandalism. */
-	snprintf(mode_buf, sizeof mode_buf, "CHRIS W0Z 'ERE !!!!11!");
-	cairo_set_font_size(cr, 36);
-	cairo_text_extents(cr, mode_buf, &mode_extents);
-	x = mode_extents.width;
-	y = mode_extents.height + 600;
-	cairo_move_to(cr, x, y);
-	cairo_text_path(cr, mode_buf);
-	cairo_set_source_rgb(cr, 0, 0, 0);
-	cairo_stroke_preserve(cr);
+	cairo_translate(cr, text_x, text_y);
+	cairo_text_path(cr, text_buffer);
 	cairo_set_source_rgb(cr, 1, 0, 0);
 	cairo_fill(cr);
-
-	if (qr_code)
-		paint_image(cr, "./pass.png");
 }
 
 static void sighandler(int signo)
@@ -435,8 +311,7 @@ static void set_single(void)
 		perror("Could not set signal handler");
 }
 
-static void
-set_mode(struct connector *c)
+static void set_mode(struct connector *c)
 {
 	unsigned int fb_id = 0;
 	int j, test_mode_num;
@@ -453,7 +328,7 @@ set_mode(struct connector *c)
 		return;
 
 	test_mode_num = 1;
-	if (force_mode){
+	if (force_mode) {
 		memcpy( &c->mode, &force_timing, sizeof(force_timing));
 		c->mode.vrefresh =(force_timing.clock*1e3)/(force_timing.htotal*force_timing.vtotal);
 		c->mode_valid = 1;
@@ -473,19 +348,21 @@ set_mode(struct connector *c)
 		width = c->mode.hdisplay;
 		height = c->mode.vdisplay;
 
+		/* This is responsible for actually creating the framebuffer
+		 * using the paint function. */
 		fb_id = kmstest_create_fb(drm_fd, width, height, bpp, depth,
 					  enable_tiling, &fb_info,
-					  paint_output_info, c);
+					  paint_function, c);
 
 		fb_ptr = gem_mmap(drm_fd, fb_info.gem_handle,
 				  fb_info.size, PROT_READ | PROT_WRITE);
 		assert(fb_ptr);
-		paint_color_key(&fb_info);
-
 		gem_close(drm_fd, fb_info.gem_handle);
 
 		fprintf(stdout, "CRTS(%u):[%d]",c->crtc, j);
 		kmstest_dump_mode(&c->mode);
+
+		/* This is where we actually output the framebuffer. */
 		if (drmModeSetCrtc(drm_fd, c->crtc, fb_id, 0, 0,
 				   &c->id, 1, &c->mode)) {
 			fprintf(stderr, "failed to set mode (%dx%d@%dHz): %s\n",
@@ -538,11 +415,6 @@ int update_display(void)
 			    sizeof(struct connector));
 	if (!connectors)
 		return 0;
-
-	if (dump_info) {
-		dump_connectors_fd(drm_fd);
-		dump_crtcs_fd(drm_fd);
-	}
 
 	if (test_preferred_mode || test_all_modes || force_mode || specified_disp_id != -1) {
 		/* Find any connected displays */
@@ -623,14 +495,17 @@ int main(int argc, char **argv)
 	GMainLoop *mainloop;
 	float force_clock;
 
-	enter_exec_path( argv );
+	enter_exec_path(argv);
+
+	if (argc > 1 && argv[1][0] != '-') {
+		input_file = argv[1];
+	}
+
+	printf("%s: displaying '%s'\n", argv[0], input_file);
 
 	opterr = 0;
 	while ((c = getopt(argc, argv, optstr)) != -1) {
 		switch (c) {
-		case 'i':
-			dump_info = 1;
-			break;
 		case 'a':
 			test_all_modes = 1;
 			break;
@@ -715,11 +590,11 @@ int main(int argc, char **argv)
 		goto out_stdio;
 	}
 
-	if (dump_info || test_all_modes)
+	if (test_all_modes)
 		goto out_stdio;
 
 	/* Do not run tests infinitely. */
-        g_timeout_add_seconds (DISPLAY_TIME, (GSourceFunc)end_test, NULL);
+        g_timeout_add (DISPLAY_TIME, (GSourceFunc)end_test, NULL);
 
         g_main_loop_run(mainloop);
 
