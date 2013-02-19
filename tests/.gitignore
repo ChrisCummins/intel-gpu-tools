@@ -26,6 +26,7 @@ gem_exec_bad_domains
 gem_exec_blt
 gem_exec_big
 gem_exec_faulting_reloc
+gem_exec_lut_handle
 gem_exec_nop
 gem_fenced_exec_thrash
 gem_fence_thrash
@@ -37,6 +38,7 @@ gem_hang
 gem_hangcheck_forcewake
 gem_largeobject
 gem_linear_blits
+gem_lut_handle
 gem_mmap
 gem_mmap_gtt
 gem_mmap_offset_exhaustion
