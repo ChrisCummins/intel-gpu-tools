@@ -89,7 +89,6 @@ static void testbuffer_check(cairo_surface_t *surface)
 /* Write the contents of testbuffer to a PNG file. */
 static void testbuffer_to_png(const char *filename)
 {
-#ifdef CAIRO_HAS_PNG_FUNCTIONS
 	cairo_surface_t *surface;
 	cairo_status_t ret;
 
@@ -101,11 +100,6 @@ static void testbuffer_to_png(const char *filename)
 		fprintf(stderr, "Unable to render testbuffer '%s'", filename);
 		abort ();
 	}
-#else
-#warning Cairo does not have PNG functions, will not be able to render test PNGs!
-	fprintf(stderr, "Cairo does not have PNG functions, cannot write '%s'",
-		filename);
-#endif /* CAIRO_HAS_PNG_FUNCTIONS */
 }
 
 int main(int argc, char **argv)
