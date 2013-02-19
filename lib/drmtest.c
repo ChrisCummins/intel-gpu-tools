@@ -880,22 +880,26 @@ unsigned int kmstest_create_fb(int fd, int width, int height, int bpp,
 
 	cr = cairo_create(surface);
 
-	paint_test_patterns(cr, width, height);
-
-	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-
-	/* Paint corner markers */
-	snprintf(buf, sizeof buf, "(%d, %d)", 0, 0);
-	paint_marker(cr, 0, 0, buf, bottomright);
-	snprintf(buf, sizeof buf, "(%d, %d)", width, 0);
-	paint_marker(cr, width, 0, buf, bottomleft);
-	snprintf(buf, sizeof buf, "(%d, %d)", 0, height);
-	paint_marker(cr, 0, height, buf, topright);
-	snprintf(buf, sizeof buf, "(%d, %d)", width, height);
-	paint_marker(cr, width, height, buf, topleft);
-
 	if (paint_func)
+		/* If we have a paint function, then run that. */
 		paint_func(cr, width, height, func_arg);
+	else {
+		/* If there's no input paint function, then paint the test
+		 * patterns instead. */
+		paint_test_patterns(cr, width, height);
+
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+		/* Paint corner markers */
+		snprintf(buf, sizeof buf, "(%d, %d)", 0, 0);
+		paint_marker(cr, 0, 0, buf, bottomright);
+		snprintf(buf, sizeof buf, "(%d, %d)", width, 0);
+		paint_marker(cr, width, 0, buf, bottomleft);
+		snprintf(buf, sizeof buf, "(%d, %d)", 0, height);
+		paint_marker(cr, 0, height, buf, topright);
+		snprintf(buf, sizeof buf, "(%d, %d)", width, height);
+		paint_marker(cr, width, height, buf, topleft);
+	}
 
 	status = cairo_status(cr);
 	assert(!status);
