@@ -126,7 +126,7 @@ void testdisplay_cleanup_hotplug(void)
 #else
 gboolean testdisplay_setup_hotplug(void)
 {
-	fprintf(stderr, "no hotplug support on this platform\n");
+	/* fprintf(stderr, "no hotplug support on this platform\n"); */
 	return TRUE;
 }
 
