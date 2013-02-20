@@ -595,6 +595,16 @@ bool drmtest_run_quick(void)
 	return run_quick;
 }
 
+bool drmtest_dump_aub(void)
+{
+	static int dump_aub = -1;
+
+	if (dump_aub == -1)
+		dump_aub = env_set("IGT_DUMP_AUB");
+
+	return dump_aub;
+}
+
 /* other helpers */
 void drmtest_exchange_int(void *array, unsigned i, unsigned j)
 {
