@@ -86,7 +86,7 @@ unsigned int plane_id;
 int plane_width, plane_height;
 static const uint32_t SPRITE_COLOR_KEY = 0x00aaaaaa;
 uint32_t *fb_ptr;
-char *input_file = "/home/chris/src/intel-gpu-tools/big.png";
+char *input_file;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -156,7 +156,6 @@ struct connector {
 
 static void end_test(void)
 {
-  printf("Ending test.\n");
   exit (0);
 }
 
@@ -261,24 +260,25 @@ static void paint_function(cairo_t *cr, int l_width, int l_height, void *priv)
 {
 	int image_x, image_y, image_width, image_height, text_x, text_y;
 	char text_buffer[128];
-	cairo_surface_t *image;
+	cairo_surface_t *surface;
 	cairo_text_extents_t text_extents;
 
-	/* Create image */
-	image = cairo_image_surface_create_from_png(input_file);
+	/* Create surface */
+	surface = cairo_image_surface_create_from_png(input_file);
 
 	/* Center the image on screen */
-	image_width = cairo_image_surface_get_width(image);
-	image_height = cairo_image_surface_get_height(image);
+	image_width = cairo_image_surface_get_width(surface);
+	image_height = cairo_image_surface_get_height(surface);
 	image_x = (width - image_width) / 2;
 	image_y = (height - image_height) / 2;
 	cairo_translate(cr, image_x, image_y);
 
 	/* Paint the image */
-	cairo_set_source_surface(cr, image, 0, 0);
+	cairo_set_source_surface(cr, surface, 0, 0);
 	cairo_paint(cr);
-	cairo_surface_destroy(image);
+	cairo_surface_destroy(surface);
 
+	/* Paint the screen and image resolutions */
 	snprintf(text_buffer, sizeof(text_buffer), "%dx%d (%dx%d)",
 		 image_width, image_height, width, height);
 	cairo_set_font_size(cr, 30);
@@ -338,6 +338,7 @@ static void set_mode(struct connector *c)
 
 	for (j = 0; j < test_mode_num; j++) {
 		struct kmstest_fb fb_info;
+		kmstest_paint_func paint_func = NULL;
 
 		if (test_all_modes)
 			c->mode = c->connector->modes[j];
@@ -348,19 +349,19 @@ static void set_mode(struct connector *c)
 		width = c->mode.hdisplay;
 		height = c->mode.vdisplay;
 
+		if (input_file)
+			paint_func = paint_function;
+
 		/* This is responsible for actually creating the framebuffer
 		 * using the paint function. */
 		fb_id = kmstest_create_fb(drm_fd, width, height, bpp, depth,
 					  enable_tiling, &fb_info,
-					  paint_function, c);
+					  paint_func, c);
 
 		fb_ptr = gem_mmap(drm_fd, fb_info.gem_handle,
 				  fb_info.size, PROT_READ | PROT_WRITE);
 		assert(fb_ptr);
 		gem_close(drm_fd, fb_info.gem_handle);
-
-		fprintf(stdout, "CRTS(%u):[%d]",c->crtc, j);
-		kmstest_dump_mode(&c->mode);
 
 		/* This is where we actually output the framebuffer. */
 		if (drmModeSetCrtc(drm_fd, c->crtc, fb_id, 0, 0,
@@ -435,7 +436,6 @@ static char optstr[] = "hiaf:s:d:p:mrto:";
 static void __attribute__((noreturn)) usage(char *name)
 {
 	fprintf(stderr, "usage: %s [-hiasdpmtf]\n", name);
-	fprintf(stderr, "\t-i\tdump info\n");
 	fprintf(stderr, "\t-a\ttest all modes\n");
 	fprintf(stderr, "\t-s\t<duration>\tsleep between each mode test\n");
 	fprintf(stderr, "\t-d\t<depth>\tbit depth of scanout buffer\n");
@@ -495,13 +495,16 @@ int main(int argc, char **argv)
 	GMainLoop *mainloop;
 	float force_clock;
 
-	enter_exec_path(argv);
-
 	if (argc > 1 && argv[1][0] != '-') {
+		/* Input image specified at command line */
 		input_file = argv[1];
+		printf("%s: displaying '%s'\n", argv[0], input_file);
+	} else {
+		printf("%s: no input image\n", argv[0]);
 	}
 
-	printf("%s: displaying '%s'\n", argv[0], input_file);
+
+	enter_exec_path(argv);
 
 	opterr = 0;
 	while ((c = getopt(argc, argv, optstr)) != -1) {
@@ -552,7 +555,7 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
-	if (!test_all_modes && !force_mode && !dump_info &&
+	if (!test_all_modes && !force_mode &&
 	    !test_preferred_mode && specified_mode_num == -1)
 		test_all_modes = 1;
 
