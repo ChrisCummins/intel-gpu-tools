@@ -18,6 +18,16 @@ static const uint32_t ps_kernel[][4] = {
 	 * pln (16) g12	g6.16<0,1,0>F g2<8,8,1>F { align1 };    */
 	{ 0x0080005a, 0x218077bd, 0x000000d0, 0x008d0040 },
 
+	/* Uncomment this instruction overwrite all texture U
+	 * coordinates with VALUE.
+	 *      MOV         DEST                   VALUE        */
+	/* { 0x00800001, 0x214003fd, 0x00000000, 0x00000000 },  */
+
+	/* Uncomment this instruction overwrite all texture V
+	 * coordinates with VALUE.
+	 *      MOV         DEST                   VALUE        */
+	/* { 0x00800001, 0x218003fd, 0x00000000, 0x00000000 },  */
+
 	/* Sample instruction - get pixel data.
 	 * send (16) g112 g10 0x2 0x8840001 { align1 };         */
 	{ 0x02800031, 0x2e001e3d, 0x00000140, 0x08840001 },
