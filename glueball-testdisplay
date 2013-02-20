@@ -6,6 +6,9 @@ rsync -avh ~/src/intel-gpu-tools/tests/*.[ch] $glueball:~/src/intel-gpu-tools/te
 rsync -avh ~/src/intel-gpu-tools/lib/*.[ch] $glueball:~/src/intel-gpu-tools/lib/
 
 ssh $glueball 'cd ~/src/intel-gpu-tools && make all && \
-./tests/testdisplay -m && \
+./tests/testdisplay /home/chris/src/intel-gpu-tools/big.png -m && \
 ./tests/testdisplay /home/chris/src/intel-gpu-tools/rendercopy-input.png -m && \
-./tests/testdisplay /home/chris/src/intel-gpu-tools/rainbow.png -m'
+./tests/testdisplay /home/chris/src/intel-gpu-tools/rainbow.png -m && \
+./tests/testdisplay -m'
+
+test $? -eq 255 && ssh $glueball 'kill `pgrep testdisplay`'
