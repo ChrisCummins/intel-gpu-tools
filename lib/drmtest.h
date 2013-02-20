@@ -91,6 +91,8 @@ bool drmtest_only_list_subtests(void);
 bool drmtest_run_quick(void);
 #define SLOW_QUICK(slow,quick) (drmtest_run_quick() ? (quick) : (slow))
 
+bool drmtest_dump_aub(void);
+
 /* helpers based upon the libdrm buffer manager */
 void drmtest_init_aperture_trashers(drm_intel_bufmgr *bufmgr);
 void drmtest_trash_aperture(void);

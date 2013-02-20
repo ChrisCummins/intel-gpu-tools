@@ -33,6 +33,10 @@
  * The goal is to simply ensure the basics work.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "rendercopy.h"
 
 #define WIDTH 512
@@ -83,6 +87,13 @@ int main(int argc, char **argv)
 	count = 0;
 	if (argc > 1)
 		count = atoi(argv[1]);
+#ifdef ENABLE_AUB_DUMP
+	if (drmtest_dump_aub()) {
+		count = 2;
+		drm_intel_bufmgr_gem_set_aub_filename(bufmgr, "rendercopy.aub");
+		drm_intel_bufmgr_gem_set_aub_dump(bufmgr, true);
+	}
+#endif
 	if (count == 0)
 		count = 3 * gem_aperture_size(fd) / SIZE / 2;
 	else if (count < 2) {
@@ -123,6 +134,19 @@ int main(int argc, char **argv)
 
 		render_copy(batch, &src, 0, 0, WIDTH, HEIGHT, &dst, 0, 0);
 		start_val[(i + 1) % count] = start_val[i % count];
+
+#ifdef ENABLE_AUB_DUMP
+		/* We're not really here for the test, we just want to dump a
+		 * trace of a call to render_copy() */
+		if (drmtest_dump_aub()) {
+			drm_intel_gem_bo_aub_dump_bmp(dst.bo,
+				0, 0, WIDTH, HEIGHT,
+				AUB_DUMP_BMP_FORMAT_ARGB_8888,
+				STRIDE, 0);
+			drm_intel_bufmgr_gem_set_aub_dump(bufmgr, false);
+			return 0;
+		}
+#endif
 	}
 	for (i = 0; i < count; i++)
 		check_bo(fd, bo[i]->handle, start_val[i]);
