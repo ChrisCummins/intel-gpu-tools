@@ -892,22 +892,25 @@ unsigned int kmstest_create_fb(int fd, int width, int height, int bpp,
 
 	cr = cairo_create(surface);
 
-	paint_test_patterns(cr, width, height);
-
-	cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
-
-	/* Paint corner markers */
-	snprintf(buf, sizeof buf, "(%d, %d)", 0, 0);
-	paint_marker(cr, 0, 0, buf, bottomright);
-	snprintf(buf, sizeof buf, "(%d, %d)", width, 0);
-	paint_marker(cr, width, 0, buf, bottomleft);
-	snprintf(buf, sizeof buf, "(%d, %d)", 0, height);
-	paint_marker(cr, 0, height, buf, topright);
-	snprintf(buf, sizeof buf, "(%d, %d)", width, height);
-	paint_marker(cr, width, height, buf, topleft);
-
 	if (paint_func)
 		paint_func(cr, width, height, func_arg);
+	else {
+		/* If we don't specify a paint function, then print some test
+		 * patterns. */
+		paint_test_patterns(cr, width, height);
+
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_SQUARE);
+
+		/* Paint corner markers */
+		snprintf(buf, sizeof buf, "(%d, %d)", 0, 0);
+		paint_marker(cr, 0, 0, buf, bottomright);
+		snprintf(buf, sizeof buf, "(%d, %d)", width, 0);
+		paint_marker(cr, width, 0, buf, bottomleft);
+		snprintf(buf, sizeof buf, "(%d, %d)", 0, height);
+		paint_marker(cr, 0, height, buf, topright);
+		snprintf(buf, sizeof buf, "(%d, %d)", width, height);
+		paint_marker(cr, width, height, buf, topleft);
+	}
 
 	status = cairo_status(cr);
 	assert(!status);
@@ -960,4 +963,3 @@ int kmstest_get_pipe_from_crtc_id(int fd, int crtc_id)
 
 	return pfci.pipe;
 }
-
