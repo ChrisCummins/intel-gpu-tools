@@ -48,6 +48,7 @@ gem_readwrite
 gem_reloc_vs_gpu
 gem_reg_read
 gem_render_linear_blits
+gem_render_png_blits
 gem_render_tiled_blits
 gem_ringfill
 gem_ring_sync_loop
