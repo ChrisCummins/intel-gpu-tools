@@ -60,7 +60,7 @@ PKG_CHECK_MODULES(DRM, [libdrm_intel >= 2.4.38 libdrm])
 PKG_CHECK_MODULES(PCIACCESS, [pciaccess >= 0.10])
 
 # check if we libdrm is recent enough for our aub dump code
-PKG_CHECK_EXISTS(AUB, [libdrm_intel >= 2.4.43],
+PKG_CHECK_EXISTS(AUB, [libdrm_intel >= 2.4.42],
 		 [enable_aub_dump=yes], [enable_aub_dump=no])
 AS_IF([test x"$enable_aub_dump" = xyes],
       [AC_DEFINE(ENABLE_AUB_DUMP,1,[Enable AUB dumps])])
