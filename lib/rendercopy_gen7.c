@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stddef.h>
 
+#include <intel_aub.h>
+
 #define ALIGN(x, y) (((x) + (y)-1) & ~((y)-1))
 
 /* Assembled from ../shaders/ps/blit.g7a */
@@ -13,6 +15,60 @@ static const uint32_t ps_kernel[][4] = {
 	{ 0x02800031, 0x2e001e3d, 0x00000140, 0x08840001 },
 	{ 0x05800031, 0x20001e3c, 0x00000e00, 0x90031000 },
 };
+
+/* AUB annotation support. */
+#define MAX_ANNOTATIONS	17
+struct annotations_context {
+	drm_intel_aub_annotation annotations[MAX_ANNOTATIONS];
+	int index;
+	uint32_t offset;
+} aub_annotations;
+
+static void
+annotation_init(struct annotations_context *ctx)
+{
+	ctx->index = 1;
+}
+
+static void
+add_annotation(drm_intel_aub_annotation *a, uint32_t type,
+	       uint32_t subtype, uint32_t ending_offset)
+{
+	a->type = type;
+	a->subtype = subtype;
+	a->ending_offset = ending_offset;
+}
+
+static void
+annotation_add_batch(struct annotations_context *ctx, size_t size)
+{
+	add_annotation(&ctx->annotations[0], AUB_TRACE_TYPE_BATCH, 0, size);
+}
+
+static void
+annotation_add_state(struct annotations_context *ctx, uint32_t state_type,
+		     uint32_t start_offset, size_t size)
+{
+	assert(ctx->index < MAX_ANNOTATIONS);
+
+	add_annotation(&ctx->annotations[ctx->index++],
+		       AUB_TRACE_TYPE_NOTYPE, 0, start_offset);
+	add_annotation(&ctx->annotations[ctx->index++],
+		       AUB_TRACE_TYPE(state_type),
+		       AUB_TRACE_SUBTYPE(state_type),
+		       start_offset + size);
+}
+
+static void
+annotation_flush(struct annotations_context *ctx,
+		 struct intel_batchbuffer *batch)
+{
+	if (drmtest_dump_aub()) {
+		drm_intel_bufmgr_gem_set_aub_annotations(batch->bo,
+							ctx->annotations,
+							ctx->index);
+	}
+}
 
 static uint32_t
 batch_used(struct intel_batchbuffer *batch)
@@ -79,7 +135,7 @@ gen7_bind_buf(struct intel_batchbuffer *batch,
 	      int is_dst)
 {
 	uint32_t *ss;
-	uint32_t write_domain, read_domain;
+	uint32_t write_domain, read_domain, offset;
 	int ret;
 
 	if (is_dst) {
@@ -90,6 +146,10 @@ gen7_bind_buf(struct intel_batchbuffer *batch,
 	}
 
 	ss = batch_alloc(batch, sizeof(*ss), 32);
+	offset = batch_offset(batch, ss);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_SURFACE_STATE,
+			     offset, sizeof(*ss));
 
 	ss[0] = (GEN7_SURFACE_2D << GEN7_SURFACE_TYPE_SHIFT |
 		 gen7_tiling_bits(buf->tiling) |
@@ -111,7 +171,7 @@ gen7_bind_buf(struct intel_batchbuffer *batch,
 				      read_domain, write_domain);
 	assert(ret == 0);
 
-	return batch_offset(batch, ss);
+	return offset;
 }
 
 struct vertex {
@@ -162,8 +222,14 @@ gen7_create_vertex_buffer(struct intel_batchbuffer *batch,
 			  uint32_t width, uint32_t height)
 {
 	struct vertex *v;
+	uint32_t size, offset;
 
-	v = batch_alloc(batch, 3 * sizeof(struct vertex), 8);
+	size = 3 * sizeof(struct vertex);
+	v = batch_alloc(batch, size, 8);
+	offset = batch_offset(batch, v);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_VERTEX_BUFFER,
+			     offset, size);
 
 	v[0] = (struct vertex) {
 		.x = dst_x + width,
@@ -186,7 +252,7 @@ gen7_create_vertex_buffer(struct intel_batchbuffer *batch,
 		.t = src_y
 	};
 
-	return batch_offset(batch, v);
+	return offset;
 }
 
 static void gen7_emit_vertex_buffer(struct intel_batchbuffer *batch,
@@ -217,16 +283,20 @@ gen7_bind_surfaces(struct intel_batchbuffer *batch,
 		   struct scratch_buf *src,
 		   struct scratch_buf *dst)
 {
-	uint32_t *binding_table;
+	uint32_t *binding_table, offset;
 
 	binding_table = batch_alloc(batch, 8, 32);
+	offset = batch_offset(batch, binding_table);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_BINDING_TABLE,
+			     offset, 8);
 
 	binding_table[0] =
 		gen7_bind_buf(batch, dst, GEN7_SURFACEFORMAT_B8G8R8A8_UNORM, 1);
 	binding_table[1] =
 		gen7_bind_buf(batch, src, GEN7_SURFACEFORMAT_B8G8R8A8_UNORM, 0);
 
-	return batch_offset(batch, binding_table);
+	return offset;
 }
 
 static void
@@ -251,8 +321,13 @@ static uint32_t
 gen7_create_blend_state(struct intel_batchbuffer *batch)
 {
 	struct gen7_blend_state *blend;
+	uint32_t offset;
 
 	blend = batch_alloc(batch, sizeof(*blend), 64);
+	offset = batch_offset(batch, blend);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_BLEND_STATE,
+			     offset, sizeof(*blend));
 
 	blend->blend0.dest_blend_factor = GEN7_BLENDFACTOR_ZERO;
 	blend->blend0.source_blend_factor = GEN7_BLENDFACTOR_ONE;
@@ -260,7 +335,7 @@ gen7_create_blend_state(struct intel_batchbuffer *batch)
 	blend->blend1.post_blend_clamp_enable = 1;
 	blend->blend1.pre_blend_clamp_enable = 1;
 
-	return batch_offset(batch, blend);
+	return offset;
 }
 
 static void
@@ -283,12 +358,18 @@ static uint32_t
 gen7_create_cc_viewport(struct intel_batchbuffer *batch)
 {
 	struct gen7_cc_viewport *vp;
+	uint32_t offset;
 
 	vp = batch_alloc(batch, sizeof(*vp), 32);
+	offset = batch_offset(batch, vp);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_CC_VP_STATE,
+			     offset, sizeof(*vp));
+
 	vp->min_depth = -1.e35;
 	vp->max_depth = 1.e35;
 
-	return batch_offset(batch, vp);
+	return offset;
 }
 
 static void
@@ -305,8 +386,13 @@ static uint32_t
 gen7_create_sampler(struct intel_batchbuffer *batch)
 {
 	struct gen7_sampler_state *ss;
+	uint32_t offset;
 
 	ss = batch_alloc(batch, sizeof(*ss), 32);
+	offset = batch_offset(batch, ss);
+
+	annotation_add_state(&aub_annotations, AUB_TRACE_SAMPLER_STATE,
+			     offset, sizeof(*ss));
 
 	ss->ss0.min_filter = GEN7_MAPFILTER_NEAREST;
 	ss->ss0.mag_filter = GEN7_MAPFILTER_NEAREST;
@@ -317,7 +403,7 @@ gen7_create_sampler(struct intel_batchbuffer *batch)
 
 	ss->ss3.non_normalized_coord = 1;
 
-	return batch_offset(batch, ss);
+	return offset;
 }
 
 static void
@@ -465,14 +551,19 @@ static void
 gen7_emit_ps(struct intel_batchbuffer *batch)
 {
 	int threads;
+	uint32_t offset;
 
 	if (IS_HASWELL(batch->devid))
 		threads = 40 << HSW_PS_MAX_THREADS_SHIFT | 1 << HSW_PS_SAMPLE_MASK_SHIFT;
 	else
 		threads = 40 << IVB_PS_MAX_THREADS_SHIFT;
 
+	offset = batch_copy(batch, ps_kernel, sizeof(ps_kernel), 64);
+	annotation_add_state(&aub_annotations, AUB_TRACE_KERNEL_INSTRUCTIONS,
+			     offset, sizeof(ps_kernel));
+
 	OUT_BATCH(GEN7_3DSTATE_PS | (8 - 2));
-	OUT_BATCH(batch_copy(batch, ps_kernel, sizeof(ps_kernel), 64));
+	OUT_BATCH(offset);
 	OUT_BATCH(1 << GEN7_PS_SAMPLER_COUNT_SHIFT |
 		  2 << GEN7_PS_BINDING_TABLE_ENTRY_COUNT_SHIFT);
 	OUT_BATCH(0); /* scratch address */
@@ -534,6 +625,8 @@ void gen7_render_copyfunc(struct intel_batchbuffer *batch,
 
 	batch->state = &batch->buffer[BATCH_STATE_SPLIT];
 
+	annotation_init(&aub_annotations);
+
 	OUT_BATCH(GEN7_PIPELINE_SELECT | PIPELINE_SELECT_3D);
 
 	gen7_emit_state_base_address(batch);
@@ -573,6 +666,9 @@ void gen7_render_copyfunc(struct intel_batchbuffer *batch,
 	batch_end = batch->ptr - batch->buffer;
 	batch_end = ALIGN(batch_end, 8);
 	assert(batch_end < BATCH_STATE_SPLIT);
+
+	annotation_add_batch(&aub_annotations, batch_end);
+	annotation_flush(&aub_annotations, batch);
 
 	gen7_render_flush(batch, batch_end);
 	intel_batchbuffer_reset(batch);
