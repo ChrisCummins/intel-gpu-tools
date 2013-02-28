@@ -74,6 +74,7 @@ TESTS_progs = \
 	gen3_render_mixed_blits \
 	gen3_mixed_blits \
 	gem_render_linear_blits \
+	gem_render_png_blits \
 	gem_render_tiled_blits \
 	gem_storedw_loop_render \
 	gem_storedw_loop_blt \
