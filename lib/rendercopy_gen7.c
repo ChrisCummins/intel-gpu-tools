@@ -2,6 +2,7 @@
 #include "gen7_render.h"
 
 #include <assert.h>
+#include <stddef.h>
 
 #define ALIGN(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -116,6 +117,13 @@ gen7_bind_buf(struct intel_batchbuffer *batch,
 	return batch_offset(batch, ss);
 }
 
+struct vertex {
+	uint16_t x;
+	uint16_t y;
+	uint16_t s;
+	uint16_t t;
+};
+
 static void
 gen7_emit_vertex_elements(struct intel_batchbuffer *batch)
 {
@@ -134,7 +142,7 @@ gen7_emit_vertex_elements(struct intel_batchbuffer *batch)
 	/* x,y */
 	OUT_BATCH(0 << GEN7_VE0_VERTEX_BUFFER_INDEX_SHIFT | GEN7_VE0_VALID |
 		  GEN7_SURFACEFORMAT_R16G16_SSCALED << GEN7_VE0_FORMAT_SHIFT |
-		  0 << GEN7_VE0_OFFSET_SHIFT); /* offsets vb in bytes */
+		  offsetof(struct vertex, x) << GEN7_VE0_OFFSET_SHIFT);
 	OUT_BATCH(GEN7_VFCOMPONENT_STORE_SRC << GEN7_VE1_VFCOMPONENT_0_SHIFT |
 		  GEN7_VFCOMPONENT_STORE_SRC << GEN7_VE1_VFCOMPONENT_1_SHIFT |
 		  GEN7_VFCOMPONENT_STORE_0 << GEN7_VE1_VFCOMPONENT_2_SHIFT |
@@ -143,7 +151,7 @@ gen7_emit_vertex_elements(struct intel_batchbuffer *batch)
 	/* s,t */
 	OUT_BATCH(0 << GEN7_VE0_VERTEX_BUFFER_INDEX_SHIFT | GEN7_VE0_VALID |
 		  GEN7_SURFACEFORMAT_R16G16_SSCALED << GEN7_VE0_FORMAT_SHIFT |
-		  4 << GEN7_VE0_OFFSET_SHIFT);  /* offset vb in bytes */
+		  offsetof(struct vertex, s) << GEN7_VE0_OFFSET_SHIFT);
 	OUT_BATCH(GEN7_VFCOMPONENT_STORE_SRC << GEN7_VE1_VFCOMPONENT_0_SHIFT |
 		  GEN7_VFCOMPONENT_STORE_SRC << GEN7_VE1_VFCOMPONENT_1_SHIFT |
 		  GEN7_VFCOMPONENT_STORE_0 << GEN7_VE1_VFCOMPONENT_2_SHIFT |
@@ -156,24 +164,30 @@ gen7_create_vertex_buffer(struct intel_batchbuffer *batch,
 			  uint32_t dst_x, uint32_t dst_y,
 			  uint32_t width, uint32_t height)
 {
-	uint16_t *v;
+	struct vertex *v;
 
-	v = batch_alloc(batch, 12*sizeof(*v), 8);
+	v = batch_alloc(batch, 3 * sizeof(struct vertex), 8);
 
-	v[0] = dst_x + width;
-	v[1] = dst_y + height;
-	v[2] = src_x + width;
-	v[3] = src_y + height;
+	v[0] = (struct vertex) {
+		.x = dst_x + width,
+		.y = dst_y + height,
+		.s = src_x + width,
+		.t = src_y + height
+	};
 
-	v[4] = dst_x;
-	v[5] = dst_y + height;
-	v[6] = src_x;
-	v[7] = src_y + height;
+	v[1] = (struct vertex) {
+		.x = dst_x,
+		.y = dst_y + height,
+		.s = src_x,
+		.t = src_y + height
+	};
 
-	v[8] = dst_x;
-	v[9] = dst_y;
-	v[10] = src_x;
-	v[11] = src_y;
+	v[2] = (struct vertex) {
+		.x = dst_x,
+		.y = dst_y,
+		.s = src_x,
+		.t = src_y
+	};
 
 	return batch_offset(batch, v);
 }
@@ -194,7 +208,7 @@ static void gen7_emit_vertex_buffer(struct intel_batchbuffer *batch,
 	OUT_BATCH(0 << GEN7_VB0_BUFFER_INDEX_SHIFT |
 		  GEN7_VB0_VERTEXDATA |
 		  GEN7_VB0_ADDRESS_MODIFY_ENABLE |
-		  4*2 << GEN7_VB0_BUFFER_PITCH_SHIFT);
+		  sizeof(struct vertex) << GEN7_VB0_BUFFER_PITCH_SHIFT);
 
 	OUT_RELOC(batch->bo, I915_GEM_DOMAIN_VERTEX, 0, offset);
 	OUT_BATCH(~0);
