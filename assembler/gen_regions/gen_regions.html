@@ -1,0 +1,198 @@
+<!--
+   Copyright © 2013 Intel Corporation
+
+   Permission is hereby granted, free of charge, to any person obtaining a
+   copy of this software and associated documentation files (the "Software"),
+   to deal in the Software without restriction, including without limitation
+   the rights to use, copy, modify, merge, publish, distribute, sublicense,
+   and/or sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice (including the next
+   paragraph) shall be included in all copies or substantial portions of the
+   Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+   IN THE SOFTWARE.
+
+   Authors:
+     Chris Cummins <christopher.e.cummins@intel.com>
+-->
+
+<!DOCTYPE html>
+<html>
+
+  <!-- JQuery -->
+  <script type="text/javascript"
+          src="assets/js/jquery-1.9.1.js"></script>
+  <script type="text/javascript"
+          src="assets/js/jquery-migrate-1.1.1.js"></script>
+  <script type="text/javascript"
+          src="assets/js/jquery.hotkeys.js"></script>
+  <script type="text/javascript"
+          src="assets/js/jquery.ba-hashchange.js"></script>
+
+  <!-- Bootstap -->
+  <link href="assets/css/bootstrap.css" rel="stylesheet" media="screen">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GEN Register visualisation tool">
+    <meta name="author" content="Chris Cummins">
+    <title>GEN Register Regions</title>
+
+    <div class="navbar">
+      <div class="navbar-inner" style="padding-bottom: 4px">
+        <a class="brand" href=""
+           style="padding-top: 16px; padding-right: 30px">GEN Regions</a>
+        <div class="btn-group">
+          <a id="exec-size-btn" class="btn dropdown-toggle"
+             data-toggle="dropdown" href="#" style="width: 64px;">
+            ExecSize <span class="caret"></span>
+          </a>
+          <ul id="exec-size-ul" class="dropdown-menu" role="menu">
+            <li>ExecSize</li>
+            <li class="divider"></li>
+            <li><a>1</a></li>
+            <li><a>2</a></li>
+            <li><a>4</a></li>
+            <li id="default-exec-size-li"><a>8</a></li>
+            <li><a>16</a></li>
+            <li><a>32</a></li>
+          </ul>
+        </div> <!-- /.btn-group -->
+        &nbsp;
+        <input id="region-form" type="text" class="search-query"
+               placeholder="Region" style="position: relative; top: 3px;"
+               >&nbsp;
+        <label class="checkbox inline" style="position: relative; top: 9px;">
+          <input id="advanced" class="checkbox inline" type="checkbox" value=""
+                 style="position: relative; top: -2px;">
+          --advanced &nbsp; &nbsp;
+        </label>
+        <button id="share-btn" class="btn pull-right" onclick="shareBtnCb();"
+                style="position: relative; top: 5px;">
+          <strong>Share</strong>
+        </button>
+      </div>
+    </div> <!-- /.navbar -->
+  </head>
+
+  <body>
+    <div class="row">
+      <div class="span11">
+        <div id="share" class="alert alert-success">
+          <button type="button" class="close">
+            &times;
+          </button>
+          <strong>URL Hash</strong>
+          <textarea id="share-hash" class="text"
+                    style="width: 400px; height: 20px; resize: none;"
+                    readonly></textarea>
+        </div> <!-- /.alert -->
+        <div id="alert-error" class="alert alert-error">
+          <button type="button" class="close">
+            &times;
+          </button>
+          <div id="alert-error-placeholder"></div>
+        </div> <!-- /.alert -->
+        <div id="alert" class="alert">
+          <button type="button" class="close">
+            &times;
+          </button>
+          <div id="alert-placeholder"></div>
+        </div> <!-- /.alert -->
+      </div> <!-- /.span11 -->
+    </div> <!-- /.row -->
+    <div class="container">
+      <div class="row">
+        <div class="span11">
+          <canvas id="canvas" width="930" height="412">
+            Unsupported browser!
+          </canvas>
+        </div> <!-- /.span11 -->
+      </div> <!-- /.row -->
+      <div class="span11">
+        <div class="row">
+          <p id="canvas-caption"></p>
+        </div> <!-- /.row -->
+        <div class="row">
+          <h2>Usage</h2>
+          <ol>
+            <li>Select an execution size from the dropdown box.</li>
+            <li>Enter a register region description into the text area.</li>
+            <li>Select '--advanced' to change SubRegNum from being in bytes to
+              the unit of data type.</li>
+          </ol>
+          <h2>Sharing</h2>
+
+          The page URL contains a description of the currently visible region
+          which can be shared, saved or bookmarked for later reference. For
+          example, <code>file:///path/to/gen-regions.html#execsize=8&amp;region=1.0<1>:F&amp;advanced=0</code>.
+          Since this is a path to a local file, you may want to use the Share
+          button to copy just the relevant part since other people's local paths
+          may not match (these URL hashes can be copied onto the end of the file
+          path or alternatively pasted directly into the region text box and
+          submitted like a normal region description).
+          <h2>Key Bindings</h2>
+          The following page-wide keybindings are defined for convenience:
+          <br/><br/>
+          <table style="position: relative; left: 30px;">
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>[return]</strong></code></td>
+              <td>Submit region</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>[escape]</strong></code></td>
+              <td>Dismiss warnings</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>e</strong></code></td>
+              <td>Toggle through execution sizes</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>a</strong></code></td>
+              <td>Toggle --advanced</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>r</strong></code></td>
+              <td>Focus on region text box</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>c</strong></code></td>
+              <td>Clear region text box</td>
+            </tr>
+            <tr>
+              <td style="text-align: right; padding-right: 10px;">
+                <code><strong>s</strong></code></td>
+              <td>Share</td>
+            </tr>
+          </table><br/><br/>
+        </div> <!-- /.row -->
+      </div> <!-- /.span11 -->
+    </div> <!-- /.container -->
+  </body>
+
+  <!-- GEN Regions -->
+  <script type="text/javascript" src="assets/js/gen_regions.js"></script>
+  <script>init();</script> <!-- Bootstrap our script. -->
+  <noscript>JavaScript support unavailable!</noscript>
+
+  <!-- Bootstrap -->
+  <script type="text/javascript" src="assets/js/bootstrap-alert.js"></script>
+  <script type="text/javascript" src="assets/js/bootstrap-dropdown.js"></script>
+  <script type="text/javascript" src="assets/js/bootstrap-button.js"></script>
+  <script type="text/javascript" src="assets/js/bootstrap-collapse.js"></script>
+</html>
