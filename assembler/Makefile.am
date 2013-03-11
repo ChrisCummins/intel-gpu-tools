@@ -44,8 +44,25 @@ intel_gen4disasm_LDADD = libbrw.la
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = intel-gen4asm.pc
 
+gen_regions_files = 					\
+	gen_regions/gen_regions.html			\
+	gen_regions/assets/css/bootstrap-responsive.css	\
+	gen_regions/assets/css/bootstrap.css		\
+	gen_regions/assets/js/jquery-1.9.1.js		\
+	gen_regions/assets/js/jquery.ba-hashchange.js	\
+	gen_regions/assets/js/jquery.hotkeys.js		\
+	gen_regions/assets/js/bootstrap-alert.js	\
+	gen_regions/assets/js/bootstrap-collapse.js	\
+	gen_regions/assets/js/gen_regions.js		\
+	gen_regions/assets/js/bootstrap-button.js	\
+	gen_regions/assets/js/bootstrap.js		\
+	gen_regions/assets/js/bootstrap-dropdown.js	\
+	gen_regions/assets/js/jquery-migrate-1.1.1.js	\
+	$(NULL)
+
 MAINTAINERCLEANFILES = $(BUILT_SOURCES)
 EXTRA_DIST = \
+	$(gen_regions_files) \
 	README \
 	TODO \
 	intel-gen4asm.pc.in
