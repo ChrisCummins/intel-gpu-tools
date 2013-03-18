@@ -22,13 +22,13 @@ var ctx = canvas.getContext('2d');
 
 /* x,y offset to start drawing grid (leaves room for labels). */
 var START_Y = 30;
-var START_X = 43;
+var START_X = 10;
 
 var COLOR_GOOD = '#dff0d8';
 var COLOR_BAD = '#f2dede';
 
 /* Derived. Don't touch. */
-var COL_W = Math.floor((canvas.width - START_X) / REG_SIZE);
+var COL_W = Math.floor((canvas.width - START_X) / REG_SIZE) - 1;
 var ROW_H = Math.floor((canvas.height - START_Y) / ROWS);
 
 /* This regexp will match the syntax of any direct addressing register address
@@ -312,7 +312,7 @@ function drawColLabels() {
     ctx.font = '14px arial';
 
     for (var i = 0; i < REG_SIZE; i++) {
-        ctx.fillText(i, col_x + COL_W / 2 - 5, START_Y - 5);
+        ctx.fillText(REG_SIZE - 1 - i, col_x + COL_W / 2 - 5, START_Y - 5);
         col_x += COL_W;
     }
 }
@@ -342,12 +342,12 @@ function drawGridRows() {
 function drawRowLabels(regFile, startRegister) {
     var row_y = START_Y + ROW_H - (canvas.height / 30);
 
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#000';
     ctx.font = 'bold 14px arial';
 
     for (var i = 0; i < ROWS; i++) {
-        ctx.fillText(regFile + (startRegister + i), START_X - 5, row_y);
+        ctx.fillText(regFile + (startRegister + i), canvas.width - 48, row_y);
         row_y += ROW_H;
     }
 }
@@ -774,7 +774,7 @@ function drawRegionCells(startRegister) {
             }
 
             /* Now lets get the canvas coordinates of the cell for drawing. */
-            var x = START_X + (regOffset * COL_W);
+            var x = START_X + (REG_SIZE - regOffset - dataSize) * COL_W;
             var y = START_Y + ((reg - startRegister) * ROW_H);
 
             /* Finally, we can paint the cell, assuming of course that we are
