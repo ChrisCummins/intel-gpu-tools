@@ -260,8 +260,9 @@ function decodeHash() {
             argc++;
             break;
         case 'advanced':
-            $('#advanced').prop('checked',
-                                (parseInt(pair[1]) ? true : false));
+            var _advanced = (parseInt(pair[1]) ? true : false);
+            advanced = _advanced;
+            $('#advanced').prop('checked', _advanced);
             argc++;
             break;
         }
