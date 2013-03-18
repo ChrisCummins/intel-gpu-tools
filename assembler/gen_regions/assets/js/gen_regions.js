@@ -786,8 +786,18 @@ function drawRegionCells(startRegister) {
                 /* We colour out-of-range cells red. */
                 var color = (reg - firstReg < MAX_REG_SPAN)
                     ? '#0f4fa8' : '#e27171';
+                var cw = dataSize * COL_W;
 
-                drawCell(count++, x, y, (dataSize * COL_W), color);
+                if (x < START_X) {
+                    var overlap = START_X - x;
+                    cw -= overlap;
+                    color = '#e27171';
+                    drawCell(count, START_X + REG_SIZE * COL_W - overlap,
+                             y + ROW_H, overlap, '#e27171')
+                    x = START_X;
+                }
+
+                drawCell(count++, x, y, cw, color);
             } else {
                 return;
             }
