@@ -239,7 +239,7 @@ function encodeHash() {
  * @return 1 if hash contained region description, else 0.
  */
 function decodeHash() {
-  args = location.hash.split('&');
+  var args = location.hash.split('&');
   var argc = 0;
 
   for (var i = 0; i < args.length; i++) {
@@ -709,11 +709,11 @@ function drawRegion() {
   var startRegister; /* The lowermost register to draw. */
 
   /* Set the caption. */
-  description = execSize + ' channels executing on a region starting at ' +
-                'register ' + regFile + register + '.' + subRegNum +
-                ', with a width of ' + width +
-                ', a horizontal stride of ' + horzStride +
-                ' and a vertical stride of ' + vertStride + '.';
+  var description = execSize + ' channels executing on a region starting at ' +
+                    'register ' + regFile + register + '.' + subRegNum +
+                    ', with a width of ' + width +
+                    ', a horizontal stride of ' + horzStride +
+                    ' and a vertical stride of ' + vertStride + '.';
 
   setCanvasCaption(description);
 
