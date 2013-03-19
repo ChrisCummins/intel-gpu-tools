@@ -225,7 +225,8 @@ function encodeHash() {
     /* If our region string is a hash, then use that. */
     hash = regionString;
   } else {
-    hash = 'execsize=' + getExecSize() + '&region=' + regionString +
+    hash = 'execsize=' + getExecSize() + '&region=' +
+           regionString.replace(/</g, '&lt;').replace(/>/g, '&rt;') +
            '&advanced=' + ((advanced) ? 1 : 0);
   }
 
@@ -239,7 +240,8 @@ function encodeHash() {
  * @return 1 if hash contained region description, else 0.
  */
 function decodeHash() {
-  var args = location.hash.split('&');
+  var hash = location.hash.replace(/&lt;/g, '<').replace(/&rt;/g, '>');
+  var args = hash.split('&');
   var argc = 0;
 
   for (var i = 0; i < args.length; i++) {
