@@ -5,18 +5,9 @@
  * loads the input data for a plane function to calculate what you want. The
  * following is boiler plate code to move our normalized texture coordinates
  * (u,v) into g10-g13. It does this 4 subspans (16 pixels) at a time.
- *
- * This should do the same thing, but it doesn't work for some reason.
- *   pln(16) g10 g6<0,1,0>F g2<8,8,1>F	{ align1 };
- *   pln(16) g12 g6.16<1>F g2<8,8,1>F	{ align1 };
  */
-/* U */
-pln (8) g10<1>F g6.0<0,1,0>F g2.0<8,8,1>F { align1 }; /* pixel 0-7 */
-pln (8) g11<1>F g6.0<0,1,0>F g4.0<8,8,1>F { align1 }; /* pixel 8-15 */
-/* V */
-pln (8) g12<1>F g6.16<0,1,0> g2.0<8,8,1>F { align1 }; /* pixel 0-7 */
-pln (8) g13<1>F g6.16<0,1,0> g4.0<8,8,1>F { align1 }; /* pixel 8-15 */
-
+pln (16) g10<1>F g6.0<0,1,0>F  g2.0<8,8,1>F { align1 }; /* U */
+pln (16) g12<1>F g6.16<0,1,0>F g2.0<8,8,1>F { align1 }; /* V */
 
 /* Next the we want the sampler to fetch the src texture (ie. src buffer). This
  * is done with a pretty simple send message. The output goes to g112, which is
